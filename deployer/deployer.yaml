@@ -1,0 +1,9 @@
+# runtime: docker | podman
+runtime: docker
+stacks:
+  - name: media
+    path: /srv/stacks/media
+  - name: monitoring
+    path: /srv/stacks/monitoring
+  - name: tools
+    path: /srv/stacks/tools

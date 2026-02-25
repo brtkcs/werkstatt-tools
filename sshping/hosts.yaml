@@ -1,0 +1,10 @@
+hosts:
+  - name: media server
+    address: 10.0.0.19
+    port: 22
+  - name: router
+    address: 10.0.0.1
+    port: 22
+  - name: localhost
+    address: 127.0.0.1
+    port: 631

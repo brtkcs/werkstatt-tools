@@ -1,0 +1,69 @@
+package main
+
+import (
+	"fmt"
+	"net"
+	"sync"
+	"time"
+)
+
+const (
+	olive = "\033[38;2;168;200;48m"
+	red   = "\033[38;2;255;107;74m"
+	muted = "\033[38;2;88;80;72m"
+	reset = "\033[0m"
+)
+
+type Host struct {
+	IP    string
+	Alive bool
+}
+
+func ping(ip string, timeout time.Duration) bool {
+	// TCP 80-as porton próbálunk – ha válaszol, él
+	conn, err := net.DialTimeout("tcp", ip+":80", timeout)
+	if err != nil {
+		// Próbáljuk 22-n is (SSH)
+		conn, err = net.DialTimeout("tcp", ip+":22", timeout)
+		if err != nil {
+			return false
+		}
+	}
+	conn.Close()
+	return true
+}
+
+func main() {
+	subnet := "10.0.0"
+	timeout := 500 * time.Millisecond
+
+	fmt.Printf("\n%snetmapper%s – %s.0/24 scanning...\n\n", olive, reset, subnet)
+
+	var wg sync.WaitGroup
+	results := make(chan Host, 254)
+
+	for i := 1; i <= 254; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			ip := fmt.Sprintf("%s.%d", subnet, n)
+			alive := ping(ip, timeout)
+			results <- Host{IP: ip, Alive: alive}
+		}(i)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	alive := 0
+	for h := range results {
+		if h.Alive {
+			fmt.Printf("  %s●%s %s\n", olive, reset, h.IP)
+			alive++
+		}
+	}
+
+	fmt.Printf("\n  %s%d eszköz elérhető%s\n\n", olive, alive, reset)
+}

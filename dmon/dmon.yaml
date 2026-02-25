@@ -1,0 +1,6 @@
+interval: 5
+processes:
+  - sshd
+  - podman
+  - nvim
+  - firefox
