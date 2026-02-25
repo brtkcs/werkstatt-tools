@@ -1,0 +1,24 @@
+# Binaries
+envcheck/envcheck
+portspy/portspy
+sshping/sshping
+hookrelay/hookrelay
+stackctl/stackctl
+kvault/kvault
+dmon/dmon
+netmapper/netmapper
+deployer/deployer
+
+# Runtime files
+*.log
+*.lock
+kvault/kvault.json
+webhooks.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
