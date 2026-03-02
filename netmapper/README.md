@@ -1,17 +1,72 @@
-Fentről lefelé:
+# netmapper
 
-**Konstansok és struct** – a színek ismerősek. A `Host` struct most IP-t és egy port listát tárol (nem bool mint előbb, hanem `[]int` – melyik portok nyitottak).
+Network host discovery and port scanner for /24 subnets. Scans 254 hosts concurrently using goroutines, then checks open ports on each live host.
 
-**`commonPorts`** – a portok amiket ellenőrzünk. Nem az összes 65535-öt, csak a gyakoriakat – SSH, DNS, web, adatbázis, stb.
+## Install
 
-**`scanHost` függvény** – kap egy IP-t, és végigscanneli rajta a commonPorts-ot. Portonként egy goroutine indul, mind egyszerre próbálkozik. Ha egy port nyitott, hozzáadja a `host.Ports` slice-hoz. A `Mutex` azért kell mert 11 goroutine egyszerre akar írni ugyanabba a listába – a Lock/Unlock biztosítja hogy egyszerre csak egy írhat. A végén rendezi a portokat szám szerint és visszaadja a Host-ot.
+```bash
+cd netmapper
+go build -o netmapper
+mv netmapper ~/.local/bin/
+```
 
-**`isAlive` függvény** – egyszerű kérdés: "válaszol-e ez az IP bármelyik porton?" Ha igen, él. Ha egyik porton sem, halott.
+## Usage
 
-**`func main()`** két fázisban dolgozik:
+```bash
+# scan default subnet
+netmapper -subnet 192.168.1
 
-**1. fázis – discovery:** 254 goroutine egyszerre scanneli a subnet összes IP-jét. Amelyik válaszol, bekerül az `aliveIPs` channel-be. Összegyűjtjük és rendezzük őket.
+# custom timeout and ports
+netmapper -subnet 10.0.0 -timeout 1000 -ports 22,80,443,8080
 
-**2. fázis – port scan:** végigmegyünk az élő IP-ken, mindegyikre futtatjuk a `scanHost`-ot. Kiírjuk az IP-t és mellé a nyitott portokat lila színnel.
+# no color (for logging/pipes)
+netmapper --no-color
+```
 
-Tehát: először megkeresi ki van a hálózaton, aztán megnézi minek van nyitva az ajtaja. Két kör, egyre részletesebb.
+## How it works
+
+Two-phase scan:
+
+1. **Host discovery** - 254 goroutines probe the subnet simultaneously, checking common ports on each IP to determine if the host is alive.
+2. **Port scan** - each live host is scanned concurrently for open ports using goroutines with mutex-protected results.
+
+## Default ports
+
+22, 53, 80, 443, 631, 3000, 3306, 5432, 8080, 8443, 9090
+
+## Example output
+
+```
+netmapper -> 10.0.0.0/24
+
+discovering hosts...
+4 hosts found, scanning ports...
+
+  * 10.0.0.1       22  80  443
+  * 10.0.0.10      22  8080
+  * 10.0.0.20      22  3306  5432
+  * 10.0.0.50      80  443
+
+  4 hosts
+```
+
+## Flags
+
+```
+-subnet string    subnet prefix, first 3 octets (default "192.168.1")
+-timeout int      connection timeout in ms (default 500)
+-ports string     comma-separated port list (default: common ports)
+--no-color        disable colored output
+```
+
+## Testing
+
+```bash
+go test -v ./...
+```
+
+Tests use local TCP listeners and httptest servers to verify scanning logic without touching the network.
+
+## License
+
+MIT
