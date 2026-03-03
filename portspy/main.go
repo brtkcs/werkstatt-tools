@@ -4,12 +4,20 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
 	"sort"
 	"sync"
 	"time"
 )
 
-// Result – egy port scan eredménye
+var (
+	cOlive  = "\033[38;2;168;200;48m"
+	cPurple = "\033[38;2;139;92;246m"
+	cMuted  = "\033[38;2;88;80;72m"
+	cReset  = "\033[0m"
+)
+
+// Result holds the outcome of a single port probe
 type Result struct {
 	Port     int
 	Open     bool
@@ -17,48 +25,68 @@ type Result struct {
 }
 
 func main() {
-	// flag – CLI argumentumok kezelése
-	// Használat: go run main.go -host 10.0.0.19 -start 1 -end 1024
-	host := flag.String("host", "localhost", "cél host vagy IP")
-	start := flag.Int("start", 1, "kezdő port")
-	end := flag.Int("end", 1024, "záró port")
-	timeout := flag.Int("timeout", 1, "timeout másodpercben")
+	host := flag.String("host", "localhost", "target host or IP")
+	start := flag.Int("start", 1, "start port")
+	end := flag.Int("end", 1024, "end port")
+	timeout := flag.Int("timeout", 1, "timeout in seconds")
+	noColor := flag.Bool("no-color", false, "disable colored output")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "portspy - concurrent TCP port scanner\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: portspy [flags]\n\n")
+		fmt.Fprintf(os.Stderr, "Flags:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
+		fmt.Fprintf(os.Stderr, "  portspy -host 10.0.0.1\n")
+		fmt.Fprintf(os.Stderr, "  portspy -host 192.168.1.1 -start 1 -end 65535 -timeout 2\n")
+	}
 	flag.Parse()
 
-	fmt.Printf("\n portspy – %s [%d-%d]\n\n", *host, *start, *end)
+	if *noColor {
+		cOlive, cPurple, cMuted, cReset = "", "", "", ""
+	}
 
+	if *start < 1 || *end > 65535 || *start > *end {
+		fmt.Fprintf(os.Stderr, "invalid port range: %d-%d\n", *start, *end)
+		os.Exit(2)
+	}
+
+	dur := time.Duration(*timeout) * time.Second
+	os.Exit(run(*host, *start, *end, dur))
+}
+
+// run executes the scan and returns an exit code
+func run(host string, start, end int, timeout time.Duration) int {
+	fmt.Printf("\n%sportspy%s %s->%s %s [%d-%d]\n\n", cOlive, cReset, cMuted, cReset, host, start, end)
+
+	open := scanPorts(host, start, end, timeout)
+
+	for _, r := range open {
+		fmt.Printf("  %s%-6d%s %sopen%s  %s%v%s\n", cPurple, r.Port, cReset, cOlive, cReset, cMuted, r.Duration.Round(time.Millisecond), cReset)
+	}
+
+	fmt.Printf("\n  %s%d open ports%s\n\n", cOlive, len(open), cReset)
+	return 0
+}
+
+// scanPorts probes all ports in range concurrently and returns sorted open results
+func scanPorts(host string, start, end int, timeout time.Duration) []Result {
 	var wg sync.WaitGroup
-	// Channel – goroutine-ok ezen küldik vissza az eredményt
-	// Mint egy cső: az egyik végén betolod, a másikon kijön
-	results := make(chan Result, *end-*start+1)
+	results := make(chan Result, end-start+1)
 
-	for port := *start; port <= *end; port++ {
+	for port := start; port <= end; port++ {
 		wg.Add(1)
 		go func(p int) {
 			defer wg.Done()
-
-			address := fmt.Sprintf("%s:%d", *host, p)
-			startTime := time.Now()
-
-			conn, err := net.DialTimeout("tcp", address, time.Duration(*timeout)*time.Second)
-			duration := time.Since(startTime)
-
-			if err != nil {
-				results <- Result{Port: p, Open: false, Duration: duration}
-				return
-			}
-			conn.Close()
-			results <- Result{Port: p, Open: true, Duration: duration}
+			results <- probePort(host, p, timeout)
 		}(port)
 	}
 
-	// Háttérben várjuk meg a goroutine-okat, aztán zárjuk a channel-t
 	go func() {
 		wg.Wait()
 		close(results)
 	}()
 
-	// Összegyűjtjük és rendezzük az eredményeket
 	var open []Result
 	for r := range results {
 		if r.Open {
@@ -70,9 +98,20 @@ func main() {
 		return open[i].Port < open[j].Port
 	})
 
-	for _, r := range open {
-		fmt.Printf("  %-6d nyitott  %v\n", r.Port, r.Duration.Round(time.Millisecond))
-	}
+	return open
+}
 
-	fmt.Printf("\n  %d nyitott port\n\n", len(open))
+// probePort checks if a single TCP port is open
+func probePort(host string, port int, timeout time.Duration) Result {
+	addr := fmt.Sprintf("%s:%d", host, port)
+	start := time.Now()
+
+	conn, err := net.DialTimeout("tcp", addr, timeout)
+	dur := time.Since(start)
+
+	if err != nil {
+		return Result{Port: port, Open: false, Duration: dur}
+	}
+	conn.Close()
+	return Result{Port: port, Open: true, Duration: dur}
 }
