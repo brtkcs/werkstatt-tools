@@ -37,7 +37,7 @@ Each tool is a standalone Go project. To build any of them:
 ```bash
 cd envcheck
 go build -o envcheck
-./envcheck
+./envcheck --help
 ```
 
 Or run directly:
@@ -46,16 +46,29 @@ Or run directly:
 go run main.go
 ```
 
+## Testing
+
+Every tool has tests:
+
+```bash
+cd envcheck
+go test -v ./...
+```
+
+All tools use interface-based dependency injection for testability – HTTP handlers are tested with `httptest`, process checks with mock checkers, file I/O with temp directories.
+
 ## Design principles
 
 - **Single binary** – `go build` produces one executable, no dependencies
+- **Tested** – every tool has `main_test.go` with table-driven and integration tests
 - **YAML/JSON config** – no hardcoded values, easy to adapt
 - **Minimal dependencies** – standard library where possible
 - **Self-hosted first** – built for homelab infrastructure, not cloud
+- **`--no-color`** – every tool supports color-free output for CI/logging
 
 ## Tech stack
 
-- **Go 1.22+**
+- **Go 1.25+**
 - Standard library: `net/http`, `os/exec`, `encoding/json`, `flag`, `sync`
 - External: `gopkg.in/yaml.v3` (YAML parsing)
 
@@ -79,7 +92,3 @@ werkstatt/
 
 - [dotfiles](https://github.com/brtkcs/dotfiles) – Neovim, bash, starship config
 - [homelab-monitoring](https://github.com/brtkcs/homelab-monitoring) – Prometheus + Grafana stack
-
-## License
-
-MIT

@@ -7,8 +7,8 @@ This means one `git push` to Gitea automatically syncs to both GitHub and Codebe
 
 ### 1. Create empty repos on GitHub and Codeberg
 
-- GitHub: `https://github.com/brtkcs/werkstatt` (empty, no README)
-- Codeberg: `https://codeberg.org/brtkcs/werkstatt` (empty, no README)
+- GitHub: `https://github.com/brtkcs/werkstatt-tools` (empty, no README)
+- Codeberg: `https://codeberg.org/brtkcs/werkstatt-tools` (empty, no README)
 
 ### 2. Create access tokens
 
@@ -28,13 +28,13 @@ This means one `git push` to Gitea automatically syncs to both GitHub and Codebe
 Go to your werkstatt repo in Gitea → Settings → Repository → Mirror Settings
 
 **GitHub mirror:**
-- Git Remote Repository URL: `https://brtkcs@github.com/brtkcs/werkstatt.git`
+- Git Remote Repository URL: `https://github.com/brtkcs/werkstatt-tools`
 - Password: your GitHub token
 - Mirror Direction: Push
 - Sync when commits are pushed: ✓
 
 **Codeberg mirror:**
-- Git Remote Repository URL: `https://brtkcs@codeberg.org/brtkcs/werkstatt.git`
+- Git Remote Repository URL: `https://codeberg.org/brtkcs/werkstatt-tools`
 - Password: your Codeberg token
 - Mirror Direction: Push
 - Sync when commits are pushed: ✓
@@ -50,8 +50,8 @@ git push
 
 Check all three:
 - Gitea: your server URL
-- GitHub: https://github.com/brtkcs/werkstatt
-- Codeberg: https://codeberg.org/brtkcs/werkstatt
+- GitHub: https://github.com/brtkcs/werkstatt-tools
+- Codeberg: https://codeberg.org/brtkcs/werkstatt-tools
 
 All three should show the same commit within seconds.
 
